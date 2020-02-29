@@ -1,0 +1,65 @@
+body {
+  margin: 0;
+  padding: 0;
+  color: black;
+}
+
+.divBlock,
+.row {
+  margin: 0;
+  padding: 0;
+}
+
+#rightPanel{
+  -webkit-box-shadow: inset 6px -6px 27px -10px rgba(0,0,0,0.42);
+  -moz-box-shadow: inset 6px -6px 27px -10px rgba(0,0,0,0.42);
+  box-shadow: inset 6px -6px 27px -10px rgba(0,0,0,0.42);
+}
+
+#panelDisplay {
+  margin-top: 5rem;
+}
+
+/*SearchBox*/
+
+/* enable absolute positioning */
+.inner-addon {
+  position: relative;
+}
+
+/* style icon */
+.inner-addon .glyphicon {
+  position: absolute;
+  padding: 15px;
+  pointer-events: none;
+}
+
+.right-addon .glyphicon {
+  right: 0px;
+}
+
+.right-addon input {
+  padding-right: 30px;
+}
+
+/* scrollbar */
+
+/* width */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+  background: #f5f5f5;
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+  background: dimgray;
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}

@@ -1,0 +1,13 @@
+Improved colors
+Many testers complained about the color of the application. The text slightly blends in to the background color. 
+The right panel has now a lighter background and darker text or controls. This gives a very high contrast between the text and background, which makes it very easy to read.
+
+Improve search functionality(Search box)
+The search before doesn't work very well. It works like a filter rather than a search. But now the search feature can find spray pads that are near to searched address.
+
+Improve birdseye view map in the right panel
+Before, the birdseye view is very flexible, which allows you to view the whole map of Canada or any other countries. But now, the birdseye view map restricts only to the area of the spray pad.
+It is also zoomed in a little to get a better view of the spray pad.
+
+Highlight pushpin in the map when selected
+Before, selecting a spray pad through search box or pushpins doesn't highlight the pushpin. Now the pushpins will be highlighted with red color if it is selected.

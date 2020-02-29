@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width" />
+  <title>Hamilton Spray Pads</title>
+  <link rel="stylesheet" type="text/css" href="bootstrap-3.3.7-dist\css\bootstrap.css" />
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script src="bootstrap-3.3.7-dist\js\bootstrap.js"></script>
+  <script src="js\mobile-detect.js"></script>
+  <script type="text/javascript" src="https://www.bing.com/api/maps/mapcontrol?key=AlUiHFrMNs728QYfqKslI6nUzSu058Ck3HxCruFJj_FHS5tlyRftbpuvb_y5pFgW"></script>
+  <link rel="stylesheet" type="text/css" href="css/desktopstyle.css" />
+  <link rel="stylesheet" type="text/css" href="css/mobilestyle.css" />
+  <script>
+    var sprayPads = []; //Spray Pad Json data
+    var userLatitude;
+    var userLongitude;
+    var map;
+    var pushpins = [];
+    var selectedPushpin;
+
+
+    // The function that gets the distance in kilometers between two coordinates
+    function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+      var R = 6371; // Radius of the earth in km
+      var dLat = deg2rad(lat2 - lat1);  // deg2rad below
+      var dLon = deg2rad(lon2 - lon1);
+      var a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2)
+        ;
+      var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      var d = R * c; // Distance in km
+      return d;
+    }
+
+    // The function that converts degrees to radian
+    function deg2rad(deg) {
+      return deg * (Math.PI / 180)
+    }
+
+    // The function that renders the spray pad details in the right panel
+    function renderSprayPadDetails(sprayPad) {
+      $("#panelDisplay")
+        .children()
+        .html("");
+      var template = $($("#sprayPadInfo").html());
+      template.find("#name").html(sprayPad.name);
+      template.find("#address").html(sprayPad.address);
+      template.find("#community").html(sprayPad.community);
+      template.find("#phone").html(sprayPad.phone);
+
+      // This will render the driving direction button
+      if (
+        typeof userLatitude === "undefined" ||
+        typeof userLongitude === "undefined"
+      ) {
+        template.find("#direction").remove();
+      } else {
+        var urlDirection =
+          "http://bing.com/maps/default.aspx?rtp=adr." +
+          sprayPad.address +
+          " " +
+          sprayPad.community +
+          "~pos." +
+          userLatitude +
+          "_" +
+          userLongitude +
+          "_MyPlace";
+        template.find("#direction").attr("href", encodeURI(urlDirection));
+      }
+
+      $("#panelDisplay")
+        .children()
+        .append(template);
+
+      // To render the aerial map depending the on the device
+      var md = new MobileDetect(window.navigator.userAgent);
+      if (md.phone() == null) {
+        var bounds = new Microsoft.Maps.LocationRect(new Microsoft.Maps.Location(sprayPad.latitude, sprayPad.longitude), 0.001, 0.001);
+        var streetViewMap = new Microsoft.Maps.Map(
+          document.getElementById("streetView"),
+          {
+            mapTypeId: Microsoft.Maps.MapTypeId.aerial,
+            zoom: 20,
+            streetsideOptions: {
+              overviewMapMode: Microsoft.Maps.OverviewMapMode.hidden
+            },
+            maxBounds: bounds
+          }
+        );
+
+        streetViewMap.setView({
+          center: new Microsoft.Maps.Location(
+            sprayPad.latitude,
+            sprayPad.longitude
+          )
+        });
+      }
+    }
+
+    // The function that highlights the pushpin when selected
+    function rednerSelectedPushpin(pushpin) {
+      if (typeof selectedPushpin !== 'undefined') {
+        selectedPushpin.setOptions({ color: '#AA298F' });
+      }
+      pushpin.setOptions({ color: 'green' });
+      selectedPushpin = pushpin;
+    }
+
+    // To load the main map and the pushpins
+    function loadMapScenario() {
+      map = new Microsoft.Maps.Map(document.getElementById("myMap"), {});
+
+      // To get the user location and render its pushpin
+      navigator.geolocation.getCurrentPosition(function (position) {
+        userLatitude = position.coords.latitude;
+        userLongitude = position.coords.longitude;
+        var location = new Microsoft.Maps.Location(
+          position.coords.latitude,
+          position.coords.longitude
+        );
+        var pushpin = new Microsoft.Maps.Pushpin(location, {
+          icon: "userlocationpin.png"
+        });
+
+        Microsoft.Maps.Events.addHandler(pushpin, "click", function () {
+          var infobox = new Microsoft.Maps.Infobox(location, {
+            title: "Current Location"
+          });
+          infobox.setMap(map);
+        });
+
+        map.entities.push(pushpin);
+      });
+
+      $.ajax({
+        url: "https://opendata.arcgis.com/datasets/d99a1dbd4f3f47b6ac3f19b2761bdf0c_15.geojson",
+        type: "GET",
+        dataType: "json",
+        success: function (data) {
+          console.log(data);
+
+          $.each(data.features, function (index, value) {
+            sprayPads.push({
+              id: value.properties.OBJECTID,
+              name: value.properties.NAME,
+              address: value.properties.ADDRESS,
+              owner: value.properties.OWNER,
+              phone: value.properties.PHONE,
+              ward: value.properties.WARD,
+              community: value.properties.COMMUNITY,
+              longitude: value.properties.LONGITUDE,
+              latitude: value.properties.LATITUDE
+            });
+          });
+
+          //Creates all pushpins for each spray pad
+          sprayPads.forEach(function (element) {
+            var location = new Microsoft.Maps.Location(
+              element.latitude,
+              element.longitude
+            );
+            var pushpin = new Microsoft.Maps.Pushpin(location);
+
+            // The pushpin click event to display the spray pad information in the right panel
+            Microsoft.Maps.Events.addHandler(pushpin, "click", function () {
+              renderSprayPadDetails(element);
+              rednerSelectedPushpin(pushpin);
+            });
+
+            map.entities.push(pushpin);
+            pushpins.push({ pushpin: pushpin, details: element });
+          });
+        }
+      });
+    }
+
+    $(document).ready(function () {
+      // The search event code
+      $("#searchBox").keyup(function () {
+
+        var value = $("#searchBox")
+          .val()
+          .toLowerCase();
+
+        var urlPath = "https://dev.virtualearth.net/REST/v1/Locations?o=json&q=" + value + " Ontario Canada" + "&key=Ag-9UmaOu3hCq2d2bxFTnt2ryCnUmD81o8_dEMuHCqbAFJ0TMwiY1IuhzPUjRaC6";
+        $.ajax({
+          url: urlPath,
+          type: "GET",
+          dataType: "json",
+          success: function (data) {
+            $("#panelDisplay")
+              .children()
+              .html("");
+            var matched = false;
+
+            // Finds the spray which name or address that matches the searchbox value
+            sprayPads.forEach(function (element) {
+              if (element.name != null) {
+                var isNameMatch = element.name.toLowerCase().includes(value);
+                var isAddressMatch = element.address
+                  .toLowerCase()
+                  .includes(value);
+
+                if (isNameMatch || isAddressMatch) {
+                  console.log("hit!");
+                  matched = true;
+                  var template = $($("#resultItem").html());
+                  template.find("#resultName").html(element.name);
+                  template.find("#resultName").data("id", element.id);
+                  template.find("#resultAddress").html(element.address);
+                  $("#panelDisplay")
+                    .children()
+                    .append(template);
+                }
+              }
+            });
+
+            // If no name or address matched, then treat the value as address and find the nearest spray pad
+            if (!matched) {
+              sprayPads.forEach(function (element) {
+                if (element.name != null) {
+                  console.log("hello");
+                  if (getDistanceFromLatLonInKm(data.resourceSets[0].resources[0].point.coordinates[0], data.resourceSets[0].resources[0].point.coordinates[1], element.latitude, element.longitude) < 2) {
+                    var template = $($("#resultItem").html());
+                    template.find("#resultName").html(element.name);
+                    template.find("#resultName").data("id", element.id);
+                    template.find("#resultAddress").html(element.address);
+                    $("#panelDisplay")
+                      .children()
+                      .append(template);
+                  }
+                }
+              });
+            }
+          }
+        });
+      });
+
+      // The search result click event to display the spray pad information in the right panel
+      $("body").on("click", "#resultName", function () {
+        var id = $(this).data("id");
+
+        pushpins.forEach(function (element) {
+          if (element.details.id == id) {
+            renderSprayPadDetails(element.details);
+            rednerSelectedPushpin(element.pushpin)
+
+            map.setView({
+              center: new Microsoft.Maps.Location(
+                element.details.latitude,
+                element.details.longitude
+              ),
+              zoom: 14
+            });
+          }
+        });
+      });
+    });
+  </script>
+</head>
+
+<body onload="loadMapScenario();">
+  <div class="row">
+    <div id="rightPanel" style="height: 100vh;background-color: #f5f5f5" class="divBlock col-sm-4 col-sm-push-8">
+      <div id="header" style="height: 20vh">
+        <div class="row">
+          <h1 style="text-align: center; margin-bottom: 5rem">
+            <strong>Hamilton Spray Pads</strong>
+          </h1>
+        </div>
+        <div class="row">
+          <div class="col-lg-10 col-lg-offset-1">
+            <div class="inner-addon right-addon">
+              <i class="glyphicon glyphicon-search"></i>
+              <input id="searchBox" type="text" class="form-control input-lg" placeholder="Search..." />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="panelDisplay" class="row" style="height: 70vh; overflow: scroll; overflow-x:hidden; overflow-y: auto">
+        <div class="col-lg-10 col-lg-offset-1">
+          <h1 style="text-align: center; margin-bottom: 3rem">
+            <strong>Welcome</strong>
+          </h1>
+          <h4 style="text-align: center">
+            Click the push pin in the map to display the spray pad information
+            / search by filtering the spray pad name or address in the search box above
+          </h4>
+        </div>
+      </div>
+
+      <!-- Templates -->
+      <template id="resultItem">
+        <div style="border-bottom: 1px solid black; margin-bottom: 3rem;">
+          <h3>
+            <a id="resultName" href="#" style="color: darkorchid" data-id=""></a>
+          </h3>
+          <p id="resultAddress"></p>
+        </div>
+      </template>
+
+      <template id="sprayPadInfo">
+        <div>
+          <h3 style="border-bottom: 1px solid black;padding: 3px; text-align: center; margin-bottom: 3rem">
+            <strong id="name"></strong>
+          </h3>
+          <p>
+            <span id="address"></span>
+            <a id="direction" class="pull-right btn btn-success btn-xs" target="_blank">Driving Direction</a>
+          </p>
+          <p id="community"></p>
+          <p id="phone"></p>
+          <div style="height:32rem;width:auto;margin-top: 3rem" id="streetView"></div>
+        </div>
+      </template>
+    </div>
+    <div class="divBlock col-sm-8 col-sm-pull-4">
+      <div style="height:100vh;width:auto" id="myMap"></div>
+    </div>
+  </div>
+</body>
+
+</html>
